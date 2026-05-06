@@ -6,6 +6,7 @@
   <img src="https://img.shields.io/badge/Groq-LLaMA%203.3%2070B-orange?style=flat-square" />
   <img src="https://img.shields.io/badge/Streamlit-1.x-red?style=flat-square&logo=streamlit" />
   <img src="https://img.shields.io/badge/Tavily-Search%20API-purple?style=flat-square" />
+  <img src="https://img.shields.io/badge/LangSmith-Tracing-blue?style=flat-square" />
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" />
 </p>
 
@@ -112,6 +113,7 @@ An independent LCEL chain that evaluates the generated report against a structur
 | Web Scraping | Requests + BeautifulSoup4 | HTML parsing and content extraction |
 | UI Framework | Streamlit | Interactive front-end and pipeline monitor |
 | PDF Export | ReportLab | Programmatic editorial PDF generation |
+| Observability | LangSmith | Pipeline tracing, latency, and token monitoring |
 | Environment | python-dotenv | Secrets management |
 
 ---
@@ -151,6 +153,7 @@ multi-agent-research-system/
 - pip
 - A Groq API key (free at [console.groq.com](https://console.groq.com))
 - A Tavily API key (free at [tavily.com](https://tavily.com))
+- A LangSmith API key (free at [smith.langchain.com](https://smith.langchain.com))
 
 ### Steps
 
@@ -181,6 +184,9 @@ Create a `.env` file in the project root with the following keys:
 ```env
 GROQ_API_KEY=your_groq_api_key_here
 TAVILY_API_KEY=your_tavily_api_key_here
+LANGCHAIN_API_KEY=your_langsmith_api_key_here
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_PROJECT=CrawlForge
 ```
 
 > **Security Note:** The `.env` file is listed in `.gitignore` and must never be committed to version control. When deploying to cloud platforms, set these as environment secrets rather than file-based variables.
@@ -204,6 +210,31 @@ python pipeline.py
 ```
 
 Prompts for a topic in the terminal and prints all intermediate agent outputs and the final report to stdout.
+
+---
+
+## LangSmith Tracing
+
+CrawlForge integrates with [LangSmith](https://smith.langchain.com) for full pipeline observability. Every run is automatically traced — showing each agent's inputs, outputs, latency, and token usage — with no code changes required beyond setting the environment variables above.
+
+### Viewing Traces
+
+1. Go to [smith.langchain.com](https://smith.langchain.com) and log in
+2. In the left sidebar, look for a project called **CrawlForge**
+3. Click it — you'll see a trace for every pipeline run, with each of the four stages (Search → Reader → Writer → Critic) visible as a chain you can click through to inspect individually
+
+> **Note:** Make sure `LANGCHAIN_API_KEY` is present in your `.env` file. Without it, traces won't appear even if `LANGCHAIN_TRACING_V2=true` is set.
+
+### What Gets Traced
+
+Each pipeline run produces a single top-level trace broken into four child spans:
+
+| Span | Agent | Captured Data |
+|---|---|---|
+| Stage 1 | Search Agent | Tavily query, top 5 results, token count |
+| Stage 2 | Reader Agent | Selected URL, scraped content, latency |
+| Stage 3 | Writer Chain | Full prompt context, generated report |
+| Stage 4 | Critic Chain | Report input, score, strengths, verdict |
 
 ---
 
@@ -246,6 +277,7 @@ step 4 - critic is reviewing the report
 - **Deep content extraction** with noise filtering (scripts, navbars, footers removed)
 - **Structured report generation** with enforced section schema
 - **Independent quality critique** with scored evaluation rubric
+- **LangSmith tracing** — full per-run observability with latency and token metrics
 - **Markdown export** — download the report as a `.md` file
 - **PDF export** — editorial-quality PDF with branded cover page, section badges, and page numbers (generated entirely in Python via ReportLab)
 - **Session state persistence** — results persist across Streamlit reruns within the same session
@@ -290,6 +322,12 @@ services:
         sync: false
       - key: TAVILY_API_KEY
         sync: false
+      - key: LANGCHAIN_API_KEY
+        sync: false
+      - key: LANGCHAIN_TRACING_V2
+        value: "true"
+      - key: LANGCHAIN_PROJECT
+        value: "CrawlForge"
 ```
 
 **Step 2 — Push to GitHub**
@@ -304,6 +342,7 @@ Make sure `.env` is in `.gitignore` — never commit API keys.
 4. Under **Environment**, add your secrets:
    - `GROQ_API_KEY` → your Groq key
    - `TAVILY_API_KEY` → your Tavily key
+   - `LANGCHAIN_API_KEY` → your LangSmith key
 5. Click **Create Web Service**
 
 Render will build and deploy automatically. Every push to `main` triggers a redeploy.
@@ -328,7 +367,10 @@ beautifulsoup4
 python-dotenv
 reportlab
 rich
+langsmith
 ```
+
+---
 
 ## Author
 
